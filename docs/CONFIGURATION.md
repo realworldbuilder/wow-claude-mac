@@ -33,7 +33,7 @@ Keys under `capture`:
 | Key | Default | Meaning |
 |---|---|---|
 | `enabled` | `true` | Run the capture program (`capture.ps1` on Windows, `bin/wowclaude-capture` built from `capture-mac.swift` on macOS). With `false` only the reload path works (`/wow-claude mode reload` in game). |
-| `processName` | `"WowB"` | Windows: the game executable without `.exe`; `setup.js` sets it from the `Wow*.exe` it finds in the client folder. macOS: the client's `.app` path (set by `setup.js`), or a bundle id (`com.blizzard.worldofwarcraft`), or part of the app name (`World of Warcraft`). When the key is missing the bridge assumes `WowB` on Windows and `World of Warcraft` on macOS. |
+| `processName` | `"WowB"` | Windows: the game executable without `.exe`; `setup.js` sets it from the `Wow*.exe` it finds in the client folder. macOS: the client's `.app` path (set by `setup.js`; it tells two installs of the same bundle id apart), or a bundle id (`com.blizzard.worldofwarcraft`), or part of the app name (the Forever client calls itself `Wow`; anything containing `wow` or `warcraft` also matches Blizzard's bundle id). When the key is missing the bridge assumes `WowB` on Windows and the bundle id on macOS. |
 | `cellPx` | `4` | Pixel size of one strip cell. Must match `CELL` at the top of `addon/WoWClaude/WoWClaude.lua`. |
 | `cellsPerRow` | `200` | Cells per strip row. Must match the addon. |
 | `maxRows` | `48` | Maximum strip rows captured. Must match the addon. |

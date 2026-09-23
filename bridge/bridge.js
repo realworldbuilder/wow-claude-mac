@@ -84,7 +84,7 @@ const MAX_PARALLEL = cfg.maxParallel || 3;
 const IS_WIN = process.platform === 'win32';
 const IS_MAC = process.platform === 'darwin';
 const CAPTURE_HELPER = path.join(HERE, 'bin', 'wowclaude-capture'); // built from capture-mac.swift by setup.js
-const cap = Object.assign({ enabled: true, processName: IS_WIN ? 'WowB' : 'World of Warcraft', cellPx: 4, cellsPerRow: 200, maxRows: 48, intervalMs: 250 }, cfg.capture || {});
+const cap = Object.assign({ enabled: true, processName: IS_WIN ? 'WowB' : 'com.blizzard.worldofwarcraft', cellPx: 4, cellsPerRow: 200, maxRows: 48, intervalMs: 250 }, cfg.capture || {});
 
 let state = readJson(STATE_FILE, { lastId: 0, sessions: {}, handled: {} });
 if (!state.handled) state.handled = {};

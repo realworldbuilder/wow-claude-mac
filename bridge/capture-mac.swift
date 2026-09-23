@@ -45,7 +45,7 @@ struct Options {
   var cells = 200
   var maxRows = 48
   var intervalMs = 250
-  var processName = "World of Warcraft"
+  var processName = WOW_BUNDLE_ID
   var testImage: String? = nil
   var dumpImage: String? = nil
   var verbose = false
@@ -266,8 +266,11 @@ func shareableContent(timeout: TimeInterval) -> Result<SCShareableContent, Error
 }
 
 // -ProcessName: an .app path (prefix match on the bundle path), a bundle id, or a
-// substring of the app name. A Windows-style value such as "WowB" falls back to
-// Blizzard's bundle id so a copied config still works.
+// substring of the app name. The Forever client calls itself just "Wow", so any
+// value that mentions wow or warcraft (a Windows "WowB", "World of Warcraft")
+// also accepts Blizzard's bundle id; a copied config keeps working.
+let WOW_BUNDLE_ID = "com.blizzard.worldofwarcraft"
+
 func appMatches(_ app: SCRunningApplication, _ spec: String) -> Bool {
   if spec.contains("/") {
     guard let ra = NSRunningApplication(processIdentifier: app.processID), let p = ra.bundleURL?.path else { return false }
@@ -277,7 +280,8 @@ func appMatches(_ app: SCRunningApplication, _ spec: String) -> Bool {
   }
   if spec.contains(".") { return app.bundleIdentifier == spec }
   if app.applicationName.localizedCaseInsensitiveContains(spec) { return true }
-  return spec.lowercased().hasPrefix("wow") && app.bundleIdentifier == "com.blizzard.worldofwarcraft"
+  let s = spec.lowercased()
+  return (s.contains("wow") || s.contains("warcraft")) && app.bundleIdentifier == WOW_BUNDLE_ID
 }
 
 struct Target {
