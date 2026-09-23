@@ -17,8 +17,9 @@ assignees: ''
 
 **Environment**
 
+- OS (Windows 10/11, or macOS version):
 - WoW client build (login screen, e.g. `1.60.1.69913`):
-- Display mode (windowed / borderless / exclusive fullscreen):
+- Display mode (windowed / borderless / exclusive fullscreen; on a Mac, which display and whether it is Retina):
 - Node.js version (`node -v`):
 - Claude Code version (`claude --version`):
 - wow-claude version or commit:

@@ -1,5 +1,6 @@
-// Round-trip test: the addon's real Codec.lua (run in a Lua VM) -> PNG -> capture.ps1 decoder.
-// Windows only (the decoder is PowerShell). Simulates game rendering with noise and gamma.
+// Round-trip test: the addon's real Codec.lua (run in a Lua VM) -> PNG -> the real
+// decoder for this platform (capture.ps1 on Windows, capture-mac.swift on macOS;
+// skipped elsewhere). Simulates game rendering with noise and gamma.
 'use strict';
 const fengari = require('fengari');
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
@@ -9,8 +10,24 @@ const { execFileSync } = require('child_process');
 const CODEC = path.join(__dirname, '..', 'addon', 'WoWClaude', 'Codec.lua');
 const CAPTURE = path.join(__dirname, '..', 'bridge', 'capture.ps1');
 const TMP = path.join(__dirname, 'tmp');
-const CELL = 4, CELLS = 200, MAXROWS = 48;
+// The transport constants must agree between the config, the addon and the decoders.
+const EXAMPLE = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'bridge', 'config.example.json'), 'utf8')).capture;
+const CELL = EXAMPLE.cellPx, CELLS = EXAMPLE.cellsPerRow, MAXROWS = EXAMPLE.maxRows;
 fs.mkdirSync(TMP, { recursive: true });
+
+if (process.platform !== 'win32' && process.platform !== 'darwin') {
+  console.log(`SKIP codec round-trip: no capture decoder for ${process.platform}`);
+  process.exit(0);
+}
+let decoder;
+if (process.platform === 'win32') {
+  decoder = file => execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CAPTURE, '-TestImage', file], { encoding: 'utf8' });
+} else {
+  const helper = require('../bridge/build-capture');
+  const built = helper.build({ log: console.log });
+  if (!built.ok) { console.error(built.message); process.exit(1); }
+  decoder = file => execFileSync(helper.BINARY, ['-TestImage', file], { encoding: 'utf8' });
+}
 
 function encodeWithLua(id, payload) {
   const bytes = Buffer.from(payload, 'utf8');
@@ -70,8 +87,7 @@ function render(cells, jitter, gamma) {
 }
 
 function decode(file) {
-  const out = execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CAPTURE, '-TestImage', file], { encoding: 'utf8' });
-  return JSON.parse(out.trim().split('\n').pop());
+  return JSON.parse(decoder(file).trim().split('\n').pop());
 }
 
 const cases = [

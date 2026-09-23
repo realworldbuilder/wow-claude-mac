@@ -5,7 +5,7 @@ Two processes that can't talk to each other directly, and how they do anyway.
 ```
    WoW client (Lua sandbox)                        bridge.js (Node, same machine)
    ┌──────────────────────────┐                    ┌─────────────────────────────┐
-   │ WoWClaude addon         │  pixels on screen  │ capture.ps1 (PowerShell)    │
+   │ WoWClaude addon         │  pixels on screen  │ capture.ps1 / capture-mac   │
    │  draws message strip ────┼───────────────────▶│  screen-captures the corner │
    │                          │                    │  decodes → {session,chat,id,│
    │                          │                    │            cwd,flags,name,  │
@@ -52,9 +52,10 @@ session \x1F chat \x1F id \x1F cwd \x1F flags \x1F name \x1F text
 
 The strip stays up until the bridge acknowledges the message (see signals) or 40 s pass, then it is re-shown up to three times before the addon gives up on pixels and arms the reload fallback for that message.
 
-`capture.ps1` finds the game window by process name, captures the client area's top-left 800×192 px with GDI (`CopyFromScreen`, DPI-aware), samples the center pixel of each cell, and validates magic, length and checksum. It prints one JSON line per new message and rate-limited warnings when a frame is seen but rejected. `bridge.js` restarts it if it exits.
+The capture program is per platform; both take the same flags, print the same JSON lines (one per new message, plus rate-limited warnings when a frame is seen but rejected), and `bridge.js` restarts either if it exits.
 
-Exclusive fullscreen blocks GDI capture; borderless/windowed works. HDR was not tested.
+- **Windows, `capture.ps1`:** finds the game window by process name, captures the client area's top-left 800×192 px with GDI (`CopyFromScreen`, DPI-aware), samples the center pixel of each cell, and validates magic, length and checksum. Exclusive fullscreen blocks GDI capture; borderless/windowed works. HDR was not tested.
+- **macOS, `capture-mac.swift`** (compiled by `setup.js` into `bridge/bin/wowclaude-capture`): finds the game through ScreenCaptureKit (`processName` is the `.app` path, a bundle id, or an app-name substring) and takes `SCScreenshotManager` screenshots with a display filter that includes only the game window, so a terminal on top of the corner does not corrupt the strip. The window frame includes the title bar in windowed mode and nothing in borderless mode, and the game may render at half the display's pixel density, so instead of computing the content origin the decoder searches the first 120 rows for the frame magic at 1x and 2x cell size and then keeps trying the found offset first. Pixels are converted to sRGB before thresholding, since the built-in panels are Display P3. Screen Recording permission belongs to the app that launched the bridge; without it the helper exits with code 2 and the bridge retries once a minute.
 
 ## Inbound: load-on-demand slots
 
@@ -100,7 +101,7 @@ The same content is written to `WoWClaude/Inbox.lua`, which the game reads on `/
 - **Transcripts:** every prompt and reply is appended to `transcripts.json` per chat. The first message from an unknown session token means the addon's saved data is fresh, so the next three publishes carry a `restore` bundle (up to 16 chats, 40 messages each) addressed to that token; the addon imports chats it doesn't have.
 - **Publishing:** final results immediately; progress throttled to one write per 3 s.
 
-`supervisor.js` restarts the bridge 3 s after any exit. `npm start` / `start.ps1` run it in the current terminal; `start-window.cmd` opens its own console window (a `.cmd` running inline would make Ctrl+C trigger cmd's "Terminate batch job?" prompt).
+`supervisor.js` restarts the bridge 3 s after any exit. `npm start` / `start.ps1` run it in the current terminal; `start-window.cmd` opens its own console window (a `.cmd` running inline would make Ctrl+C trigger cmd's "Terminate batch job?" prompt); `start.command` is the macOS double-click equivalent.
 
 ## Addon
 
@@ -119,4 +120,4 @@ The same content is written to `WoWClaude/Inbox.lua`, which the game reads on `/
 - A raised signal file stays "valid" in the client until a full restart, so slot numbers that wrap around (every 200 messages) lose the cheap signals until then. Self-detected.
 - Message capacity ≈ 3.2 KB per send; longer text is refused with a hint.
 - Replies are published in full (a ~3 KB message can produce a 60 KB reply; that is fine for a slot file). The bridge-side transcript keeps the first 4000 characters of each message, and a restore sends back the last 40 messages per chat at 2000 characters each.
-- Windows only (PowerShell capture, NTFS).
+- Windows and macOS only: the screen capture is per platform (PowerShell/GDI, ScreenCaptureKit). Everything else is plain Node and plain files; a Linux port needs only a capture program that speaks the same JSON lines.

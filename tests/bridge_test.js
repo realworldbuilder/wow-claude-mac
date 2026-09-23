@@ -46,16 +46,24 @@ test('parseOutbox decodes the SavedVariables fallback', () => {
 });
 
 test('resolveCwd: empty is the default, relative joins it, ~ is home, absolute wins', () => {
-  const base = path.resolve('C:\\work\\proj');
+  const win = process.platform === 'win32';
+  const base = path.resolve(win ? 'C:\\work\\proj' : '/work/proj');
+  const elsewhere = win ? 'D:\\elsewhere' : '/elsewhere';
   assert.equal(P.resolveCwd('', base), base);
   assert.equal(P.resolveCwd('  ', base), base);
   assert.equal(P.resolveCwd('realms', base), path.join(base, 'realms'));
   assert.equal(P.resolveCwd('./realms/', base), path.join(base, 'realms'));
   assert.equal(P.resolveCwd('../other', base), path.resolve(base, '..', 'other'));
   assert.equal(P.resolveCwd('~/x', base), path.join(os.homedir(), 'x'));
-  assert.equal(P.resolveCwd('D:\\elsewhere', base), path.resolve('D:\\elsewhere'));
-  assert.ok(P.sameFolder('C:\\A\\b\\', 'c:/a/B'));
-  assert.ok(!P.sameFolder('C:\\a', 'C:\\a\\b'));
+  assert.equal(P.resolveCwd(elsewhere, base), path.resolve(elsewhere));
+  if (win) {
+    assert.ok(P.sameFolder('C:\\A\\b\\', 'c:/a/B'));
+    assert.ok(!P.sameFolder('C:\\a', 'C:\\a\\b'));
+  } else {
+    assert.ok(P.sameFolder('/a/b/', '/a/b'));
+    assert.equal(P.sameFolder('/A/b/', '/a/B'), process.platform === 'darwin'); // APFS ignores case, ext4 does not
+    assert.ok(!P.sameFolder('/a', '/a/b'));
+  }
 });
 
 test('ruleFor turns denials into prefix rules', () => {

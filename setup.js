@@ -4,15 +4,18 @@
 //
 //   node setup.js [--wow "<client folder>"] [--project "<default work folder>"] [--account <name>]
 //
-// Finds the WoW: Forever client, copies the addon into Interface\AddOns, writes
-// bridge/config.json from the example (if missing), and builds the slot pool.
-// Re-running is safe: existing config and generated files are kept.
+// Finds the WoW: Forever client, copies the addon into Interface/AddOns, writes
+// bridge/config.json from the example (if missing), builds the slot pool and, on
+// macOS, compiles the screen-capture helper. Re-running is safe: existing config
+// and generated files are kept.
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
+const IS_WIN = process.platform === 'win32';
+const IS_MAC = process.platform === 'darwin';
 const ROOT = __dirname;
 const ADDON_SRC = path.join(ROOT, 'addon', 'WoWClaude');
 const BRIDGE = path.join(ROOT, 'bridge');
@@ -25,18 +28,27 @@ for (let i = 2; i < process.argv.length; i++) {
   if (a.startsWith('--')) args[a.slice(2)] = process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[++i] : true;
 }
 
+// The game program inside a client folder: Wow*.exe on Windows, the .app bundle on macOS.
+const EXE_PATTERN = IS_MAC ? /^World of Warcraft.*\.app$/i : /^Wow.*\.exe$/i;
+const EXE_HINT = IS_MAC ? 'a World of Warcraft*.app' : 'a Wow*.exe';
+const CLIENT_EXAMPLE = IS_MAC ? '/Applications/World of Warcraft/_classic_beta_' : 'C:\\path\\to\\World of Warcraft\\_classic_beta_';
+
+function clientExe(dir) {
+  try { return fs.readdirSync(dir).find(f => EXE_PATTERN.test(f)) || null; } catch { return null; }
+}
+
 function isClient(dir) {
-  try {
-    return fs.existsSync(path.join(dir, 'Interface')) && fs.readdirSync(dir).some(f => /^Wow.*\.exe$/i.test(f));
-  } catch { return false; }
+  return fs.existsSync(path.join(dir, 'Interface')) && !!clientExe(dir);
 }
 
 function findClient() {
   if (args.wow) {
     if (isClient(args.wow)) return args.wow;
-    throw new Error(`--wow "${args.wow}" does not look like a WoW client folder (needs Interface\\ and a Wow*.exe)`);
+    throw new Error(`--wow "${args.wow}" does not look like a WoW client folder (needs an Interface folder and ${EXE_HINT})`);
   }
-  const roots = [process.env['ProgramFiles(x86)'], process.env.ProgramFiles, 'D:\\', 'E:\\', 'D:\\Games', 'E:\\Games', 'C:\\Games']
+  const roots = (IS_MAC
+    ? ['/Applications', path.join(os.homedir(), 'Applications')]
+    : [process.env['ProgramFiles(x86)'], process.env.ProgramFiles, 'D:\\', 'E:\\', 'D:\\Games', 'E:\\Games', 'C:\\Games'])
     .filter(Boolean).map(r => path.join(r, 'World of Warcraft'));
   for (const root of roots) {
     for (const flavor of ['_classic_beta_', '_forever_', '_retail_', '_classic_era_', '_classic_']) {
@@ -44,7 +56,7 @@ function findClient() {
       if (isClient(dir)) return dir;
     }
   }
-  throw new Error('Could not find the WoW client. Pass --wow "C:\\path\\to\\World of Warcraft\\_classic_beta_"');
+  throw new Error(`Could not find the WoW client. Pass --wow "${CLIENT_EXAMPLE}"`);
 }
 
 function findAccount(client) {
@@ -83,8 +95,10 @@ function writeConfig(client, account) {
   cfg.inboxFile = path.join(cfg.addonDir, 'WoWClaude', 'Inbox.lua');
   cfg.savedVariablesFile = path.join(client, 'WTF', 'Account', account, 'SavedVariables', 'WoWClaude.lua');
   cfg.defaultCwd = args.project ? path.resolve(args.project) : process.cwd();
-  const exe = fs.readdirSync(client).find(f => /^Wow.*\.exe$/i.test(f));
-  if (exe) cfg.capture.processName = exe.replace(/\.exe$/i, '');
+  // What the capture program looks for: the exe name on Windows; on macOS the
+  // full .app path, which tells two installs of the same bundle id apart.
+  const exe = clientExe(client);
+  if (exe) cfg.capture.processName = IS_MAC ? path.join(client, exe) : exe.replace(/\.exe$/i, '');
   fs.writeFileSync(CONFIG, JSON.stringify(cfg, null, 2) + '\n');
   console.log(`config   : wrote ${CONFIG}`);
   return cfg;
@@ -102,11 +116,21 @@ try {
   console.log('slots    : building the reply-slot pool and signal files...');
   const r = spawnSync(process.execPath, [path.join(BRIDGE, 'install-slots.js')], { stdio: 'inherit' });
   if (r.status !== 0) throw new Error('install-slots.js failed');
+  let helperNote = '';
+  if (IS_MAC) {
+    const built = require('./bridge/build-capture').build({ log: m => console.log(`helper   : ${m}`) });
+    console.log(`helper   : ${built.message}`);
+    if (!built.ok) helperNote = '\n     (The bridge runs without screen capture until the helper builds; re-run node setup.js after installing the tools.)';
+  }
+  const launcher = IS_MAC ? 'bridge/start.command opens its own Terminal window' : 'bridge\\start-window.cmd opens its own window';
+  const permission = IS_MAC ? `
+     macOS asks once for Screen Recording permission, for the app that runs the bridge (Terminal, iTerm, Claude...).
+     Allow it under System Settings > Privacy & Security > Screen & System Audio Recording, then reopen that app.` : '';
   console.log(`
 Done. Next:
   1. Fully quit and relaunch World of Warcraft (it only discovers new addon files at launch).
   2. Enable "WoW Claude" at the character select AddOns screen (the WoW Claude slot ### entries stay enabled).
-  3. Start the bridge:  npm start   (in this terminal; bridge\\start-window.cmd opens its own window)
+  3. Start the bridge:  npm start   (in this terminal; ${launcher})${permission}${helperNote}
   4. In game:  /wow-claude
 `);
 } catch (e) {

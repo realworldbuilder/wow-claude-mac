@@ -12,7 +12,7 @@ const SRC = path.join(__dirname, '..', 'bridge');
 fs.rmSync(S, { recursive: true, force: true });
 fs.mkdirSync(path.join(S, 'addons', 'WoWClaude'), { recursive: true });
 fs.mkdirSync(path.join(S, 'proj'), { recursive: true });
-for (const f of ['bridge.js', 'protocol.js', 'install-slots.js', 'capture.ps1']) fs.copyFileSync(path.join(SRC, f), path.join(S, f));
+for (const f of ['bridge.js', 'protocol.js', 'install-slots.js', 'capture.ps1', 'capture-mac.swift', 'build-capture.js']) fs.copyFileSync(path.join(SRC, f), path.join(S, f));
 fs.writeFileSync(path.join(S, 'addons', 'WoWClaude', 'WoWClaude.toc'), '## Interface: 16001\n');
 
 const cfg = JSON.parse(fs.readFileSync(path.join(SRC, 'config.example.json'), 'utf8'));

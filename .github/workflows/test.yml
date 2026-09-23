@@ -6,8 +6,13 @@ on:
 
 jobs:
   test:
-    # Windows: the codec round-trip runs the real capture.ps1 decoder.
-    runs-on: windows-latest
+    # The codec round-trip runs the real decoder: capture.ps1 on Windows, the
+    # compiled capture-mac.swift on macOS.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

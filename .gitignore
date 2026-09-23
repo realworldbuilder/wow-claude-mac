@@ -8,6 +8,7 @@ bridge/bridge.log
 # tooling
 node_modules/
 tests/tmp/
+bridge/bin/
 
 # OS / local artifacts
 .DS_Store

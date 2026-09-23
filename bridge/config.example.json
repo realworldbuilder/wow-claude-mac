@@ -28,7 +28,9 @@
     "Bash(npx:*)",
     "Bash(node:*)",
     "Bash(python:*)",
+    "Bash(python3:*)",
     "Bash(pip:*)",
+    "Bash(pip3:*)",
     "Bash(pytest:*)",
     "Bash(ls:*)",
     "Bash(dir:*)"

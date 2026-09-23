@@ -8,18 +8,18 @@ The bridge reads `config.json` once at start. Restart it after editing, except f
 
 | Key | Default (from `config.example.json`) | Meaning |
 |---|---|---|
-| `addonDir` | `…\World of Warcraft\_classic_beta_\Interface\AddOns` | The game's AddOns folder. The bridge writes the slot addons, `Inbox.lua` and every signal file under it. `setup.js` fills this in from the client it finds. |
+| `addonDir` | `…\World of Warcraft\_classic_beta_\Interface\AddOns` (macOS: `/Applications/World of Warcraft/_classic_beta_/Interface/AddOns`) | The game's AddOns folder. The bridge writes the slot addons, `Inbox.lua` and every signal file under it. `setup.js` fills this in from the client it finds. |
 | `inboxFile` | `<addonDir>\WoWClaude\Inbox.lua` | The file the game reads on `/reload` (fallback path). Normally derived from `addonDir`; only change it if you moved the addon. |
 | `savedVariablesFile` | `…\WTF\Account\<account>\SavedVariables\WoWClaude.lua` | The addon's saved data. The bridge polls it for the reload-path outbox. `setup.js` picks the first account under `WTF\Account`; pass `--account <name>` to choose another. |
 | `defaultCwd` | `C:\path\to\your\project` | Folder for chats that have not chosen one with `/wow-claude cd`, when the bridge is started from inside this repo (`npm start`). See [Which folder Claude works in](#which-folder-claude-works-in). |
-| `claudePath` | `""` | Full path to the `claude` executable. Empty means: look in `%UserProfile%\.local\bin\claude.exe`, then on `PATH`. |
+| `claudePath` | `""` | Full path to the `claude` executable. Empty means: look in `%UserProfile%\.local\bin\claude.exe` (`~/.local/bin/claude` on macOS), then on `PATH`. |
 
 ## Running Claude
 
 | Key | Default | Meaning |
 |---|---|---|
 | `permissionMode` | `"acceptEdits"` | Passed to `claude -p --permission-mode`. `acceptEdits` auto-approves file edits inside the working folder; `bypassPermissions` approves everything; `default` denies anything not in `allowedTools`. |
-| `allowedTools` | git, npm, npx, node, python, pip, pytest, ls, dir, WebSearch, WebFetch | Rules passed to `claude -p --allowedTools`. `Bash(git:*)` allows any command starting with `git`. The **Allow & retry** button in game appends rules here permanently. |
+| `allowedTools` | git, npm, npx, node, python, python3, pip, pip3, pytest, ls, dir, WebSearch, WebFetch | Rules passed to `claude -p --allowedTools`. `Bash(git:*)` allows any command starting with `git`. The **Allow & retry** button in game appends rules here permanently. |
 | `model` | `""` | Passed to `claude -p --model` when non-empty. Empty uses Claude Code's default. |
 | `maxParallel` | `3` | How many chats may run Claude at the same time. Further messages queue per chat. |
 | `timeoutMs` | `1800000` (30 min) | A Claude run longer than this is killed and reported as an error in game. |
@@ -32,14 +32,14 @@ Keys under `capture`:
 
 | Key | Default | Meaning |
 |---|---|---|
-| `enabled` | `true` | Run `capture.ps1`. With `false` only the reload path works (`/wow-claude mode reload` in game). |
-| `processName` | `"WowB"` | The game executable without `.exe`. `setup.js` sets it from the `Wow*.exe` it finds in the client folder. |
-| `cellPx` | `4` | Pixel size of one strip cell. Must match `CELL` in `addon/WoWClaude/Codec.lua`. |
+| `enabled` | `true` | Run the capture program (`capture.ps1` on Windows, `bin/wowclaude-capture` built from `capture-mac.swift` on macOS). With `false` only the reload path works (`/wow-claude mode reload` in game). |
+| `processName` | `"WowB"` | Windows: the game executable without `.exe`; `setup.js` sets it from the `Wow*.exe` it finds in the client folder. macOS: the client's `.app` path (set by `setup.js`), or a bundle id (`com.blizzard.worldofwarcraft`), or part of the app name (`World of Warcraft`). When the key is missing the bridge assumes `WowB` on Windows and `World of Warcraft` on macOS. |
+| `cellPx` | `4` | Pixel size of one strip cell. Must match `CELL` at the top of `addon/WoWClaude/WoWClaude.lua`. |
 | `cellsPerRow` | `200` | Cells per strip row. Must match the addon. |
 | `maxRows` | `48` | Maximum strip rows captured. Must match the addon. |
 | `intervalMs` | `250` | Capture period. Lower is more responsive and costs a little more CPU. |
 
-The capture region is `cellsPerRow × cellPx` by `maxRows × cellPx` pixels (800 × 192 by default) at the top-left of the game's client area.
+The capture region is `cellsPerRow × cellPx` by `maxRows × cellPx` pixels (800 × 192 by default) at the top-left of the game's client area. On macOS the helper captures twice that, plus 120 rows, so it can find the strip below a title bar and when the game renders at half the display's pixel density (cells then appear 8 px wide).
 
 ## Slot pool and signal files
 
@@ -100,8 +100,8 @@ All of these are gitignored.
 
 | Flag | Meaning |
 |---|---|
-| `--wow "<client folder>"` | The folder containing `Wow*.exe` and `Interface\`, when auto-detection fails. |
+| `--wow "<client folder>"` | The folder containing `Wow*.exe` (Windows) or `World of Warcraft*.app` (macOS) and `Interface\`, when auto-detection fails. |
 | `--project "<dir>"` | Written to `defaultCwd`. Defaults to the folder you ran setup from. |
 | `--account <name>` | Which `WTF\Account\<name>` to use when there are several. |
 
-Re-running `setup.js` re-copies the addon (except `Inbox.lua`, which the bridge owns once running), keeps an existing `config.json`, and only creates slot and signal files that are missing.
+Re-running `setup.js` re-copies the addon (except `Inbox.lua`, which the bridge owns once running), keeps an existing `config.json`, and only creates slot and signal files that are missing. On macOS it also rebuilds `bridge/bin/wowclaude-capture` when `capture-mac.swift` is newer than the binary (`node bridge/build-capture.js --force` rebuilds it regardless).

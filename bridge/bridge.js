@@ -81,7 +81,10 @@ function siblingFolders() {
 
 const SLOTS = cfg.slots || 200;
 const MAX_PARALLEL = cfg.maxParallel || 3;
-const cap = Object.assign({ enabled: true, processName: 'WowB', cellPx: 4, cellsPerRow: 200, maxRows: 48, intervalMs: 250 }, cfg.capture || {});
+const IS_WIN = process.platform === 'win32';
+const IS_MAC = process.platform === 'darwin';
+const CAPTURE_HELPER = path.join(HERE, 'bin', 'wowclaude-capture'); // built from capture-mac.swift by setup.js
+const cap = Object.assign({ enabled: true, processName: IS_WIN ? 'WowB' : 'World of Warcraft', cellPx: 4, cellsPerRow: 200, maxRows: 48, intervalMs: 250 }, cfg.capture || {});
 
 let state = readJson(STATE_FILE, { lastId: 0, sessions: {}, handled: {} });
 if (!state.handled) state.handled = {};
@@ -195,7 +198,7 @@ function atomicWrite(file, content) {
 
 function resolveClaude() {
   if (cfg.claudePath) return cfg.claudePath;
-  const local = path.join(os.homedir(), '.local', 'bin', 'claude.exe');
+  const local = path.join(os.homedir(), '.local', 'bin', IS_WIN ? 'claude.exe' : 'claude');
   if (fs.existsSync(local)) return local;
   return 'claude';
 }
@@ -514,12 +517,23 @@ function pollSavedVariables() {
   if (job) submit(job);
 }
 
-function startCapture() {
-  const script = path.join(HERE, 'capture.ps1');
-  const args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script,
-    '-Cell', String(cap.cellPx), '-Cells', String(cap.cellsPerRow), '-MaxRows', String(cap.maxRows),
+// The capture program for this platform. Both take the same flags and print the
+// same JSON lines: capture.ps1 on Windows, the compiled capture-mac.swift on macOS.
+function captureCommand() {
+  const flags = ['-Cell', String(cap.cellPx), '-Cells', String(cap.cellsPerRow), '-MaxRows', String(cap.maxRows),
     '-IntervalMs', String(cap.intervalMs), '-ProcessName', cap.processName];
-  const ps = spawn('powershell.exe', args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  if (IS_WIN) return { cmd: 'powershell.exe', args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(HERE, 'capture.ps1'), ...flags] };
+  if (IS_MAC) {
+    if (!fs.existsSync(CAPTURE_HELPER)) return { error: `helper not built (${CAPTURE_HELPER}); run: node setup.js  (needs Apple's Command Line Tools: xcode-select --install)` };
+    return { cmd: CAPTURE_HELPER, args: flags };
+  }
+  return { error: `no screen capture on ${process.platform}; use /wow-claude mode reload in game` };
+}
+
+function startCapture() {
+  const c = captureCommand();
+  if (c.error) { log('capture:', c.error); return; }
+  const ps = spawn(c.cmd, c.args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   const rl = readline.createInterface({ input: ps.stdout });
   rl.on('line', (line) => {
     let ev;
@@ -534,9 +548,13 @@ function startCapture() {
     }
   });
   ps.stderr.on('data', (d) => log('capture stderr:', String(d).trim().slice(0, 300)));
+  ps.on('error', (e) => log('capture could not start:', e.message));
   ps.on('close', (code) => {
-    log(`capture exited (${code}); restarting in 5 s`);
-    setTimeout(startCapture, 5000);
+    // 2 = no Screen Recording permission (macOS): nothing changes in 5 s, and the
+    // system prompt should not be spammed, so wait a minute between tries.
+    const wait = code === 2 ? 60000 : 5000;
+    log(`capture exited (${code}); restarting in ${wait / 1000} s`);
+    setTimeout(startCapture, wait);
   });
 }
 
@@ -546,7 +564,10 @@ function banner() {
   console.log(`  addons   : ${cfg.addonDir}`);
   console.log(`  addon    : ${addonInstalled() ? 'installed' : 'NOT INSTALLED - run: node setup.js, then restart WoW'}`);
   console.log(`  slots    : ${slotsInstalled() ? SLOTS + ' installed' : 'NOT INSTALLED - run: node setup.js (or node bridge/install-slots.js), then restart WoW'}`);
-  console.log(`  capture  : ${cap.enabled ? 'on (' + cap.processName + ', ' + cap.cellsPerRow + 'x' + cap.maxRows + ' cells of ' + cap.cellPx + 'px)' : 'off'}`);
+  const cc = captureCommand();
+  const capState = !cap.enabled ? 'off' : cc.error ? 'OFF - ' + cc.error
+    : 'on (' + cap.processName + ', ' + cap.cellsPerRow + 'x' + cap.maxRows + ' cells of ' + cap.cellPx + 'px)';
+  console.log(`  capture  : ${capState}`);
   console.log(`  parallel : up to ${MAX_PARALLEL} chats at once`);
   console.log(`  fallback : ${cfg.savedVariablesFile}`);
   console.log(`  claude   : ${resolveClaude()}`);

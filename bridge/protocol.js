@@ -75,8 +75,11 @@ function resolveCwd(raw, base) {
   return path.resolve(base, p);
 }
 
+// Windows and (by default) macOS file systems ignore case; Linux does not.
+const CASE_INSENSITIVE_FS = process.platform === 'win32' || process.platform === 'darwin';
 function sameFolder(a, b) {
-  return path.resolve(a || '').toLowerCase() === path.resolve(b || '').toLowerCase();
+  const x = path.resolve(a || ''), y = path.resolve(b || '');
+  return CASE_INSENSITIVE_FS ? x.toLowerCase() === y.toLowerCase() : x === y;
 }
 
 // ---------------------------------------------------------------------------
@@ -148,13 +151,17 @@ function ruleFor(d) {
 }
 
 // One progress line per tool call, as shown in the game's "working" bubble.
+// Last path segment, whichever separator the path uses (Claude on Windows
+// reports backslashes; path.basename only knows the local convention).
+const baseName = p => String(p || '').split(/[\\/]/).filter(Boolean).pop() || '';
+
 function describeToolUse(block) {
   const inp = block.input || {};
   switch (block.name) {
     case 'Bash': return `$ ${String(inp.command || '').split('\n')[0].slice(0, 110)}`;
-    case 'Read': return `read ${path.basename(inp.file_path || '')}`;
-    case 'Edit': return `edit ${path.basename(inp.file_path || '')}`;
-    case 'Write': return `write ${path.basename(inp.file_path || '')}`;
+    case 'Read': return `read ${baseName(inp.file_path)}`;
+    case 'Edit': return `edit ${baseName(inp.file_path)}`;
+    case 'Write': return `write ${baseName(inp.file_path)}`;
     case 'Grep': return `grep ${inp.pattern || ''}`;
     case 'Glob': return `glob ${inp.pattern || ''}`;
     case 'Agent': return `agent: ${inp.description || ''}`;

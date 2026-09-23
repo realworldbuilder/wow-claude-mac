@@ -31,6 +31,7 @@ local PRESENCE_MAX = 2000 -- presence/0001..2000.wav, one flipped by the bridge 
 local STRIP_TRIES = 3 -- re-show an unacknowledged message this many times before falling back
 local CELL, CELLS_PER_ROW, MAX_ROWS = 4, 200, 48
 local STRIP_SECONDS = 40 -- max per message; it leaves the strip as soon as the bridge acknowledges
+local COPY_KEY = (IsMacClient and IsMacClient()) and "Cmd+C" or "Ctrl+C" -- shown wherever the player is told how to copy
 local POLL_SCHEDULE = { 5, 10, 16, 24, 34, 46, 60, 80, 100, 130, 160, 200, 240, 300 }
 local POLL_TAIL = 60
 local TICK_SECONDS = 2
@@ -1391,7 +1392,7 @@ function WoWClaude.Render()
 	WoWClaude.RenderChatList()
 end
 
--- Copy box (/wow-claude copy): a selectable EditBox with the last reply pre-highlighted for Ctrl+C.
+-- Copy box (/wow-claude copy): a selectable EditBox with the last reply pre-highlighted for Ctrl+C / Cmd+C.
 function WoWClaude.ShowCopy(text)
 	if not ui.copy then
 		local cf = CreateFrame("Frame", "WoWClaudeCopy", UIParent, "BackdropTemplate")
@@ -1411,7 +1412,7 @@ function WoWClaude.ShowCopy(text)
 
 		local t = cf:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		t:SetPoint("TOPLEFT", cf, "TOPLEFT", 14, -12)
-		t:SetText("Text is selected - press Ctrl+C, then Esc")
+		t:SetText("Text is selected - press " .. COPY_KEY .. ", then Esc")
 
 		local x = CreateFrame("Button", nil, cf, "UIPanelCloseButton")
 		x:SetPoint("TOPRIGHT", cf, "TOPRIGHT", -4, -4)
@@ -2167,7 +2168,7 @@ local HELP = table.concat({
 	"/wow-claude resend                 show the strip again if the bridge missed it",
 	"/wow-claude reload                 reload now (also frees the slot pool)",
 	"/wow-claude cancel                 stop waiting on this chat's reply",
-	"/wow-claude copy                   open the last reply in a selectable box for Ctrl+C",
+	"/wow-claude copy                   open the last reply in a selectable box for " .. COPY_KEY,
 	"/wow-claude bind <key>             hotkey: checks for a reply while waiting, else toggles the window",
 	"/wow-claude auto on|off            reload-mode only: auto-reload on your next keypress after the interval",
 	"/wow-claude signal on|off          the cheap sound-file readiness check (off if it spams errors)",
@@ -2327,6 +2328,8 @@ SlashCmdList["WOWCLAUDE"] = function(msg)
 			"presence: head at " .. tostring(run.presence and run.presence.last or "?") .. ", beats seen: " .. tostring(run.presence and run.presence.beats or 0),
 			select(5, WoWClaude.BridgeState()),
 			"mode: " .. s.mode .. ", session token: " .. tostring(db.session),
+			-- The capture side must see 4-pixel cells at the top-left of this render size.
+			"screen: " .. (GetPhysicalScreenSize and string.format("%dx%d", GetPhysicalScreenSize()) or "?") .. " physical px, strip: " .. CELLS_PER_ROW .. "x" .. MAX_ROWS .. " cells of " .. CELL .. " px" .. ((IsMacClient and IsMacClient()) and ", mac client" or ""),
 		}
 		for _, ch in ipairs(db.chats) do
 			local a = run.act and run.act[ch.id]

@@ -4,8 +4,16 @@ All notable changes to this project are recorded here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Added
+
+- macOS support. `bridge/capture-mac.swift` is the screen capture for the Mac client: ScreenCaptureKit screenshots of the game window only, a search for the strip below the title bar and at 1x/2x pixel density, sRGB conversion for Display P3 panels, and a clear message (plus a once-a-minute retry) when Screen Recording permission is missing. `setup.js` finds the `.app` client under `/Applications`, writes its path as `capture.processName`, and compiles the helper with `swiftc` into `bridge/bin/`. `bridge/start.command` is the double-click launcher. `docs/INSTALL-MACOS.md` walks through it.
+- `/wow-claude diag` prints the physical screen size the strip is drawn at; the copy box says Cmd+C on a Mac.
+
 ### Changed
 
+- The test suite runs on macOS as well as Windows (the codec round-trip uses the platform's real decoder, and skips itself elsewhere); CI runs both.
+- Tool-use progress lines (`edit player.gd`) take the last path segment whichever separator the path uses.
+- Chat folder comparison is case-sensitive on Linux file systems, case-insensitive on Windows and macOS.
 - Rename and Folder moved off the bottom row into a small menu that opens when you right-click a chat in the left panel.
 - Each chat row has a trash can that deletes the chat after an OK/Cancel confirm; `/wow-claude delete` still deletes without asking.
 - Send sits at the right end of the input box instead of at the left of the bottom row.

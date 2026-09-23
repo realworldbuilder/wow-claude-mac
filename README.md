@@ -20,31 +20,34 @@ WoW addons are sandboxed: no network, no file reads at runtime. Two doors remain
 
 ## Requirements
 
-- Windows, NTFS
-- World of Warcraft: Forever (tested on 1.60.1.69913, TOC 16001), **windowed or borderless** — exclusive fullscreen blocks screen capture
+- Windows (NTFS), or macOS 14.2 or newer with Apple's Command Line Tools (`xcode-select --install`; they compile the small screen-capture helper)
+- World of Warcraft: Forever (tested on 1.60.1.69913, TOC 16001). On Windows, **windowed or borderless** — exclusive fullscreen blocks screen capture; on a Mac any display mode works
 - [Node.js](https://nodejs.org) 22.2 or newer
 - [Claude Code](https://claude.com/claude-code) installed and logged in (`claude --version` works)
 
 ## Install
 
-Step-by-step for a fresh machine, with troubleshooting: [docs/INSTALL-WINDOWS.md](docs/INSTALL-WINDOWS.md). The short version:
+Step-by-step for a fresh machine, with troubleshooting: [docs/INSTALL-WINDOWS.md](docs/INSTALL-WINDOWS.md) or [docs/INSTALL-MACOS.md](docs/INSTALL-MACOS.md). The short version:
 
 ```powershell
 git clone https://github.com/chelinho139/wow-claude
 cd wow-claude
-node setup.js --project "C:\path\to\the\project\you\want\to\work\on"
+node setup.js --project "C:\path\to\the\project\you\want\to\work\on"    # macOS: --project "/path/to/the/project"
 ```
 
-`setup.js` finds the client (pass `--wow "<client folder>"` if it can't), copies the addon into `Interface\AddOns\WoWClaude`, writes `bridge/config.json`, and generates the slot pool and signal files (≈15,000 tiny files; that's normal — the client only discovers addon files at launch, so they have to exist up front).
+`setup.js` finds the client (pass `--wow "<client folder>"` if it can't), copies the addon into `Interface\AddOns\WoWClaude`, writes `bridge/config.json`, and generates the slot pool and signal files (≈15,000 tiny files; that's normal — the client only discovers addon files at launch, so they have to exist up front). On a Mac it also compiles the screen-capture helper (`bridge/capture-mac.swift`).
 
 Then **fully quit and relaunch WoW**, enable *WoW Claude* on the AddOns screen, and start the bridge:
 
 ```
 npm start               # in the current terminal (or: bridge\start.ps1)
-bridge\start-window.cmd # double-click version: opens its own window
+bridge\start-window.cmd # Windows double-click version: opens its own window
+bridge/start.command    # macOS double-click version: opens its own Terminal window
 ```
 
 It restarts itself if it ever crashes. Ctrl+C (or closing the window) stops it.
+
+On a Mac, the first start asks for **Screen Recording** permission for the app that runs the bridge (Terminal, iTerm2...). Allow it in System Settings, quit and reopen that app, and start the bridge again; the bridge only ever looks at the top-left corner of the game window.
 
 ### `wow-claude`: start it from the project folder
 
@@ -104,13 +107,13 @@ The keys you are most likely to touch. Every key, flag and environment variable 
 | `defaultCwd` | folder for chats that haven't been given one with `/wow-claude cd` |
 | `maxParallel` | how many chats may run Claude at once (default 3) |
 | `permissionMode`, `allowedTools`, `model` | passed to `claude -p` |
-| `capture.processName` | the game exe without `.exe` (`WowB` for Forever); set by `setup.js` |
+| `capture.processName` | Windows: the game exe without `.exe` (`WowB` for Forever); macOS: the client's `.app` path. Set by `setup.js` |
 | `slots`, `actMax`, `presenceMax` | pool sizes; must match the constants at the top of `WoWClaude.lua` if you change them |
 | `timeoutMs` | kill a run that takes longer than this (default 30 min) |
 
 ## Troubleshooting
 
-- **Connect says "No answer from the bridge" / light stays red** — is the bridge running? Is the game window on screen and not minimized? Exclusive fullscreen blocks capture. `bridge.log` shows `strip #N` when a message is decoded and `strip seen but rejected: ...` when one is misread.
+- **Connect says "No answer from the bridge" / light stays red** — is the bridge running? Is the game window on screen and not minimized? Exclusive fullscreen blocks capture on Windows. On a Mac, has Screen Recording been allowed for your terminal (and the terminal reopened since)? `bridge.log` shows `strip #N` when a message is decoded and `strip seen but rejected: ...` when one is misread.
 - **Reply never appears but `bridge.log` says `done`** — `/wow-claude slots`; if the pool is empty, `/wow-claude reload` frees it and picks the reply up via the fallback path.
 - **"Reply slots not installed"** — `node bridge/install-slots.js`, then restart WoW.
 - **Chats vanished after a reload** — the beta client sometimes wipes addon saved data. The bridge keeps `transcripts.json` and sends your chats back automatically on the next message.
@@ -118,7 +121,7 @@ The keys you are most likely to touch. Every key, flag and environment variable 
 
 ## Documentation
 
-- [docs/INSTALL-WINDOWS.md](docs/INSTALL-WINDOWS.md): step-by-step install on a fresh machine, with troubleshooting
+- [docs/INSTALL-WINDOWS.md](docs/INSTALL-WINDOWS.md), [docs/INSTALL-MACOS.md](docs/INSTALL-MACOS.md): step-by-step install on a fresh machine, with troubleshooting
 - [docs/CONFIGURATION.md](docs/CONFIGURATION.md): every config key, command-line flag and environment variable
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the pixel strip, slot pool and signal files work, and why
 - [CONTRIBUTING.md](CONTRIBUTING.md): repo layout, running the tests, conventions
@@ -128,11 +131,11 @@ The keys you are most likely to touch. Every key, flag and environment variable 
 
 ```
 npm install
-npm test          # everything except the live test; CI runs it on Windows (.github/workflows/test.yml)
+npm test          # everything except the live test; CI runs it on Windows and macOS (.github/workflows/test.yml)
 npm run test:live # runs the bridge in a sandbox with a real Claude call
 ```
 
-Layout: `addon/WoWClaude` is the addon, `bridge/` the companion (`bridge.js` does I/O and processes, `protocol.js` is the pure part), `docs/` the design and reference, `tests/` the checks. After editing the addon, copy it into the game folder (`node setup.js` does that too) and `/reload`. What each test covers, and the conventions for changes, are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Layout: `addon/WoWClaude` is the addon, `bridge/` the companion (`bridge.js` does I/O and processes, `protocol.js` is the pure part, `capture.ps1` and `capture-mac.swift` the screen capture per platform), `docs/` the design and reference, `tests/` the checks. After editing the addon, copy it into the game folder (`node setup.js` does that too) and `/reload`. What each test covers, and the conventions for changes, are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits
 
