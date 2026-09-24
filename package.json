@@ -5,9 +5,10 @@
   "description": "Chat with local Claude Code sessions from inside World of Warcraft: Forever, with no UI reloads. Pixel strip out, load-on-demand slots in.",
   "license": "MIT",
   "author": "chelinho139",
+  "contributors": ["realworldbuilder"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/chelinho139/wow-claude"
+    "url": "https://github.com/realworldbuilder/wow-claude-mac"
   },
   "keywords": [
     "world-of-warcraft",

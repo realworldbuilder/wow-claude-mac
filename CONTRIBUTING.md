@@ -29,8 +29,8 @@ Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) first. The two transports (pix
 ## Setting up for development
 
 ```powershell
-git clone https://github.com/chelinho139/wow-claude
-cd wow-claude
+git clone https://github.com/realworldbuilder/wow-claude-mac
+cd wow-claude-mac
 npm install          # test tooling only: fengari (Lua VM) and luaparse
 npm test
 ```

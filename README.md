@@ -1,4 +1,6 @@
-# wow-claude
+# wow-claude-mac
+
+> The macOS port of [chelinho139/wow-claude](https://github.com/chelinho139/wow-claude), which is Windows-only. Everything below is the original project plus a native screen-capture helper for the Mac client; the Windows path is unchanged, so this repo works on both. Install guide for the Mac: [docs/INSTALL-MACOS.md](docs/INSTALL-MACOS.md).
 
 <p align="center">
   <img src="docs/screenshot.jpg" alt="The WoW Claude chat window open in Goldshire, with a message on its way to Claude Code" width="900">
@@ -30,8 +32,8 @@ WoW addons are sandboxed: no network, no file reads at runtime. Two doors remain
 Step-by-step for a fresh machine, with troubleshooting: [docs/INSTALL-WINDOWS.md](docs/INSTALL-WINDOWS.md) or [docs/INSTALL-MACOS.md](docs/INSTALL-MACOS.md). The short version:
 
 ```powershell
-git clone https://github.com/chelinho139/wow-claude
-cd wow-claude
+git clone https://github.com/realworldbuilder/wow-claude-mac
+cd wow-claude-mac
 node setup.js --project "C:\path\to\the\project\you\want\to\work\on"    # macOS: --project "/path/to/the/project"
 ```
 

@@ -19,8 +19,8 @@ Any terminal works: Terminal.app, iTerm2, or the terminal inside an editor. Reme
 
 ```bash
 cd ~/Documents                      # or wherever you keep projects
-git clone https://github.com/chelinho139/wow-claude
-cd wow-claude
+git clone https://github.com/realworldbuilder/wow-claude-mac
+cd wow-claude-mac
 npm install
 ```
 
