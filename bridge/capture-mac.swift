@@ -370,7 +370,7 @@ func responsibleAppName() -> String {
     pid = parentPid(of: pid)
     hops += 1
   }
-  return "the app that launched the bridge"
+  return "the terminal app you started the bridge from"
 }
 
 func failPermission() -> Never {
